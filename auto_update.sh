@@ -1,39 +1,110 @@
 #!/bin/bash
+set -euo pipefail
 
-REPO_API="https://api.github.com/repos/tvselect/tvselect-fr-live-stream/commits/master"
-LOCAL_COMMIT_FILE="$HOME/.config/tvselect-fr-live-stream/.last_commit"
+INSTALL_DIR="$HOME/tvselect-fr-live-stream"
+CONFIG_DIR="$HOME/.config/tvselect-fr-live-stream"
+LAST_RELEASE_FILE="$CONFIG_DIR/.last_release"
 
-latest_commit=$(curl -s $REPO_API | jq -r '.sha')
+REPO="tvselect/tvselect-fr-live-stream"
+GPG_KEY_PATH="$CONFIG_DIR/public.key"
 
-if [ -z "$latest_commit" ]; then
-    echo "Failed to fetch the latest commit hash from GitHub." >&2
+mkdir -p "$CONFIG_DIR"
+
+# ----------------------------------------------------------------------
+# 1. Import and trust public GPG key (ONLY if not already imported)
+# ----------------------------------------------------------------------
+if ! gpg --list-keys | grep -q "tvselect update key"; then
+    echo "[INFO] Importing trusted release-signing key..."
+    gpg --import "$GPG_KEY_PATH"
+fi
+
+# ----------------------------------------------------------------------
+# 2. Fetch latest release metadata from GitHub
+# ----------------------------------------------------------------------
+echo "[INFO] Checking latest release..."
+api_json=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+
+latest_tag=$(echo "$api_json" | jq -r '.tag_name')
+if [ "$latest_tag" = "null" ] || [ -z "$latest_tag" ]; then
+    echo "[ERROR] Failed to fetch the latest release tag."
     exit 1
 fi
-# Compare with the last commit
-if [ -f "$LOCAL_COMMIT_FILE" ]; then
-    last_commit=$(cat "$LOCAL_COMMIT_FILE")
-    if [ "$last_commit" == "$latest_commit" ]; then
-        echo "No updates available."
+VERSION="${latest_tag#v}"
+echo "[INFO] Latest release is: $latest_tag"
+
+# ----------------------------------------------------------------------
+# 3. Check if already updated
+# ----------------------------------------------------------------------
+if [ -f "$LAST_RELEASE_FILE" ]; then
+    installed_tag=$(cat "$LAST_RELEASE_FILE")
+    if [ "$installed_tag" = "$latest_tag" ]; then
+        echo "[INFO] Already up to date."
         exit 0
     fi
 fi
 
-wget https://github.com/tvselect/tvselect-fr-live-stream/archive/refs/heads/master.zip -O /tmp/master_tvselect_fr.zip
-if [ $? -ne 0 ]; then
-    echo "Download failed."
+# ----------------------------------------------------------------------
+# 4. Determine asset URLs
+# ----------------------------------------------------------------------
+zip_url=$(echo "$api_json" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url')
+asc_url="$zip_url.asc"
+
+if [ -z "$zip_url" ] || [ -z "$asc_url" ]; then
+    echo "[ERROR] Could not determine release URLs."
     exit 1
 fi
 
-[ -d "$HOME/tvselect-fr-live-stream" ] && rm -rf "$HOME/tvselect-fr-live-stream"
+echo "[INFO] ZIP URL: $zip_url"
+echo "[INFO] ASC URL: $asc_url"
 
-unzip -o /tmp/master_tvselect_fr.zip -d "$HOME"
-if [ $? -ne 0 ]; then
-    echo "Unzip failed."
+tmp_dir=$(mktemp -d)
+zip_file="$tmp_dir/app.zip"
+asc_file="$tmp_dir/app.zip.asc"
+
+# ----------------------------------------------------------------------
+# 5. Download release files
+# ----------------------------------------------------------------------
+echo "[INFO] Downloading release archive..."
+curl -sL "$zip_url" -o "$zip_file"
+
+echo "[INFO] Downloading signature..."
+curl -sL "$asc_url" -o "$asc_file"
+
+# ----------------------------------------------------------------------
+# 6. Verify GPG signature
+# ----------------------------------------------------------------------
+echo "[INFO] Verifying signature..."
+if ! gpg --verify "$asc_file" "$zip_file" 2>/dev/null; then
+    echo "[ERROR] GPG verification failed! Aborting update."
     exit 1
 fi
-rm /tmp/master_tvselect_fr.zip
-mv "$HOME/tvselect-fr-live-stream-master" "$HOME/tvselect-fr-live-stream"
 
-echo "$latest_commit" > "$LOCAL_COMMIT_FILE"
+echo "[INFO] Signature verified successfully."
 
-echo "Program updated successfully."
+# ----------------------------------------------------------------------
+# 7. Install new version
+# ----------------------------------------------------------------------
+echo "[INFO] Installing update..."
+
+EXTRACTED_DIR="$tmp_dir/tvselect-fr-live-stream-${VERSION}"
+
+unzip -q "$zip_file" -d "$tmp_dir"
+
+if [ -d "$INSTALL_DIR" ]; then
+    mv "$INSTALL_DIR" "$INSTALL_DIR.old"
+fi
+
+echo "[INFO] Installing new version..."
+mv "$EXTRACTED_DIR" "$INSTALL_DIR"
+
+rm -rf "$INSTALL_DIR.old"
+
+# ----------------------------------------------------------------------
+# 8. Save installed version
+# ----------------------------------------------------------------------
+echo "$latest_tag" > "$LAST_RELEASE_FILE"
+
+echo "[INFO] Update to $latest_tag completed successfully."
+
+rm -rf "$tmp_dir"
+exit 0
