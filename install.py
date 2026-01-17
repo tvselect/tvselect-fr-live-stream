@@ -136,12 +136,39 @@ while crypted.lower() not in answers:
                     "identifiants par l'application TV-select-fr. "
                     "(répondre par oui ou non) : ").strip().lower()
 
-config_path = os.path.join("/home", user, ".config/tvselect-fr-live-stream/config.py")
-template_path = os.path.join("/home", user, "tvselect-fr-live-stream/config_template.py")
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+config_dir = os.path.join(
+    "/home",
+    user,
+    ".config",
+    "tvselect-fr-live-stream",
+)
+
+os.makedirs(config_dir, exist_ok=True)
+
+config_path = os.path.join(config_dir, "config.py")
+template_path = os.path.join(script_dir, "config_template.py")
 
 if not os.path.exists(config_path):
     shutil.copy(template_path, config_path)
     os.chmod(config_path, 0o640)
+
+config_gpgkey_path = os.path.join(config_dir, "public.key")
+
+gpgkey_path = os.path.join(
+    script_dir,
+    ".gpg",
+    "public.key",
+)
+
+if not os.path.exists(gpgkey_path):
+    raise FileNotFoundError(
+        f"GPG public key not found at expected location: {gpgkey_path}"
+    )
+
+shutil.copy(gpgkey_path, config_gpgkey_path)
+os.chmod(config_gpgkey_path, 0o640)
 
 hdmi_screen = "no_se"
 
