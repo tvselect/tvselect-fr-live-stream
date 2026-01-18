@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import sentry_sdk
+import shlex
 import subprocess
 import sys
 
@@ -83,6 +84,26 @@ def subtract_one_minute(time_str: str) -> str:
     dt = datetime.strptime(time_str, "%H:%M")
     dt -= timedelta(minutes=1)
     return dt.strftime("%H:%M")
+
+def sanitize_filename(name):
+    """
+    Sanitize filename while preserving accents and international characters.
+    Only removes shell metacharacters and dangerous characters.
+    """
+
+    dangerous_chars = [
+        ';', '|', '`', '\\', '\n', '\r',
+        '>', '<', '&', '$', '*', '?',
+        '(', ')', '[', ']', '{', '}',
+        '"', "'", '!', '#', '%', '^', '~',
+        '\x00'  # Null byte
+    ]
+
+    result = name
+    for char in dangerous_chars:
+        result = result.replace(char, '_')
+
+    return result
 
 if SENTRY_MONITORING_SDK:
     sentry_sdk.init(
@@ -187,7 +208,13 @@ for video in data:
         )
         continue
 
-    channel_name = video["channel"].replace("'", "-").replace(" ", "_")
+    raw_title = sanitize_filename(video['title'])
+    title_short = raw_title[:-3] if len(raw_title) > 3 else raw_title
+    raw_channel = video["channel"].replace("'", "-").replace(" ", "_")
+
+    safe_channel_param = shlex.quote(raw_channel)
+    safe_duration = shlex.quote(str(video['duration']))
+    safe_url = shlex.quote(channel_url)
 
     cmd = ["at", video["start"]]
 
@@ -220,13 +247,13 @@ for video in data:
 
         record_script = (
             ". $HOME/.local/share/tvselect-fr-live-stream/.venv/bin/activate "
-            f"&& timeout {video['duration']} streamlink "
+            f"&& timeout {safe_duration} streamlink "
             "--hls-live-edge 5 "
-            f"-o $HOME/videos_select/{video['title'][:-3]}_{channel_name}.ts "
+            f"-o $HOME/videos_select/{title_short}_{safe_channel_param}.ts "
             "--tf1-email \"$STREAMLINK_TF1_EMAIL\" "
             "--tf1-password \"$STREAMLINK_TF1_PASSWORD\" "
-            f"{channel_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
-            f"record_{video['title']}.log 2>&1"
+            f"{safe_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
+            f"record_{title_short}.log 2>&1"
         )
 
     elif (
@@ -234,7 +261,7 @@ for video in data:
         and not can_process_tf1_video(TF1_EMAIL, TF1_PASSWORD, video["channel"])
     ):
         logger.error(
-            f"The video {video['title'][:-3]}_{channel_name}.ts cannot be "
+            f"The video {title_short}_{safe_channel_param}.ts cannot be "
             "recorded because of TF1 missing credentials."
         )
         continue
@@ -242,11 +269,11 @@ for video in data:
     else:
         record_script = (
             ". $HOME/.local/share/tvselect-fr-live-stream/.venv/bin/activate "
-            f"&& timeout {video['duration']} streamlink "
+            f"&& timeout {safe_duration} streamlink "
             "--hls-live-edge 5 "
-            f"-o $HOME/videos_select/{video['title'][:-3]}_{channel_name}.ts "
-            f"{channel_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
-            f"record_{video['title']}.log 2>&1"
+            f"-o $HOME/videos_select/{title_short}_{safe_channel_param}.ts "
+            f"{safe_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
+            f"record_{title_short}.log 2>&1"
         )
 
     with open(log_file, "a", encoding="utf-8") as log:
