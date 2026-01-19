@@ -1,4 +1,4 @@
-# tvselect-fr-live-stream v2.0.0
+# tvselect-fr-live-stream v2.1.0
 
 ## Instructions d'installation:
 
