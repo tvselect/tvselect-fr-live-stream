@@ -106,14 +106,16 @@ timeout = 6
 
 try:
     response = requests.head("https://tv-select.fr", timeout=timeout)
+    http_response = response.status_code
 except ConnectTimeout:
     print(f"Connection to TV-select.fr timed out after {timeout} seconds")
+    http_response = None
 except ConnectionError:
-    print(f"Failed to connect to TV-select.fr")
+    print("Failed to connect to TV-select.fr")
+    http_response = None
 except RequestException as e:
     print(f"Request failed: {e}")
-
-http_response = response.status_code
+    http_response = None
 
 if http_response != 200:
     print(
