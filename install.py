@@ -464,15 +464,46 @@ with open(f"/home/{user}/.config/tvselect-fr-live-stream/config.py", "w", encodi
             else:
                 conf.write(f'{param} = "{password_tf1}"\n')
 
-with open("cron_tasks.sh", "w", encoding='utf-8') as cron_file:
-    process = subprocess.run(["crontab", "-l"], stdout=cron_file, stderr=subprocess.PIPE, text=True)
+answer_cron = "maybe"
 
-if process.returncode != 0:
-    print(f"\n Error listing crontab: {process.stderr}")
-else:
-    print("\n Crontab tasks saved to cron_tasks.sh")
+while answer_cron.lower() not in answers:
+    answer_cron = input(
+        "\nLe programme va maintenant ajouter une tâche cron à "
+        "votre crontab. Une sauvegarde de votre crontab sera "
+        "réalisée dans ce ficher: ~/.crontab_backup . "
+        "Voulez-vous continuer? (répondre par oui ou non): "
+    )
 
-with open("cron_tasks.sh", "r", encoding='utf-8') as crontab_file:
+if answer_cron.lower() == "non":
+    print('\nSortie du programme.\n')
+    exit()
+
+backup_file = os.path.join(os.path.expanduser("~"), ".crontab_backup")
+with open(backup_file, "w", encoding='utf-8') as f:
+    try:
+        result = subprocess.run(["crontab", "-u", user, "-l"], check=True, stdout=f, stderr=subprocess.PIPE, universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        if "no crontab for" in e.stderr:
+            print(f"Il n'y a pas de crontab paramétré pour {user}."
+                    " Aucun backup n'a été effectué.")
+        else:
+            raise
+
+cron_file = os.path.join(os.path.expanduser("~"), ".local", "share", "tvselect-fr-live-stream", "cron_tasks.sh")
+with open(cron_file, "w", encoding='utf-8') as f:
+    try:
+        result = subprocess.run(["crontab", "-u", user, "-l"], check=True, stdout=f, stderr=subprocess.PIPE, universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        if "no crontab for" in e.stderr:
+            print(f"No crontab set for {user}")
+        else:
+            raise
+os.chmod(cron_file, 0o700)
+
+with open(
+    f"/home/{user}/.local/share/tvselect-fr-live-stream"
+    "/cron_tasks.sh", "r", encoding='utf-8'
+) as crontab_file:
     cron_lines = crontab_file.readlines()
 
 curl = (
@@ -531,20 +562,18 @@ if hdmi_screen != "non" and "tvselect-fr-live-stream &&" not in cron_lines_join:
 if auto_update.lower() == "oui" and "tvselect-fr-live-stream/auto_update" not in cron_lines_join:
     cron_lines.append(cron_auto_update)
 
-with open("cron_tasks.sh", "w", encoding='utf-8') as crontab_file:
+with open(
+    f"/home/{user}/.local/share/tvselect-fr-live-stream"
+    "/cron_tasks.sh", "w", encoding='utf-8'
+) as crontab_file:
     for cron_task in cron_lines:
         crontab_file.write(cron_task)
 
-process = subprocess.run(["crontab", "cron_tasks.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-if process.returncode != 0:
-    print(f"\n Error loading cron tasks: {process.stderr}")
-else:
-    print("\n Cron tasks loaded successfully.")
+cron_file = os.path.join(os.path.expanduser("~"), ".local", "share", "tvselect-fr-live-stream", "cron_tasks.sh")
+subprocess.run(["crontab", "-u", user, cron_file], check=True)
 
-process = subprocess.run(["rm", "cron_tasks.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-if process.returncode != 0:
-    print(f"\n Error deleting file: {process.stderr}")
-else:
-    print("\n File 'cron_tasks.sh' deleted successfully.")
-
-print("\nLes tâches cron de votre box TV-select sont maintenant configurés!\n")
+cron_file = os.path.join(os.path.expanduser("~"), ".local", "share", "tvselect-fr-live-stream", "cron_tasks.sh")
+os.remove(cron_file)
+print(
+    "\nLes tâches cron sont maintenant configurées!\n"
+)
