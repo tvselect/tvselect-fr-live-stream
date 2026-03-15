@@ -38,6 +38,6 @@ CHANNELS_URL = {
     "CSTAR": "https://www.dailymotion.com/video/x5gv5v0",
     "TF1 Séries Films": "https://www.tf1.fr/tf1-series-films/direct",
     "L'Equipe": "https://www.tf1.fr/l-equipe/direct",
-    "LCP": "https://www.dailymotion.com/video/xgepjr",
+    "LCP": "https://www.france.tv/lcp-public-senat/direct.html",
     "PUBLIC SENAT 2424": "https://www.dailymotion.com/video/xkxbzc",
 }
