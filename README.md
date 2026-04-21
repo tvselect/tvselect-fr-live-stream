@@ -3,6 +3,8 @@
 > 🔍 Turn TV into a discovery engine
 > 📼 Automatically record TV programs based on your interests
 
+![Demo](docs/demo-tvselect-fr.gif)
+
 ---
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
@@ -63,7 +65,9 @@ This project is part of the **TV Select ecosystem**.
 
 Videos are stored in:
 
+```bash id="pathvid"
 ~/videos_select
+```
 
 Format:
 
@@ -83,21 +87,26 @@ title + video_id + search + channel.ts
 
 ### Install dependencies
 
+```bash id="install1"
 sudo apt update && sudo apt install at curl unzip virtualenv ffmpeg
+```
 
 ---
 
 ### Download
 
+```bash id="install2"
 cd ~
 curl -L -o tvselect-fr-live-stream.zip https://github.com/tvselect/tvselect-fr-live-stream/archive/refs/tags/v2.2.0.zip
 unzip tvselect-fr-live-stream.zip
 mv tvselect-fr-live-stream-2.2.0 tvselect-fr-live-stream
+```
 
 ---
 
 ### Setup
 
+```bash id="setup"
 mkdir -p ~/.local/share/tvselect-fr-live-stream ~/.config/tvselect-fr-live-stream
 
 cd ~/.local/share/tvselect-fr-live-stream
@@ -107,6 +116,7 @@ pip install -r ~/tvselect-fr-live-stream/requirements.txt
 
 cd ~/tvselect-fr-live-stream
 python3 install.py
+```
 
 ---
 
