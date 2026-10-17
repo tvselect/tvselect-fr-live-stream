@@ -1,4 +1,4 @@
-# 📺 tvselect-fr-live-stream v2.2.1
+# 📺 tvselect-fr-live-stream v3.0.0
 
 > 🔍 Turn TV into a discovery engine
 > 📼 Automatically record TV programs based on your interests
