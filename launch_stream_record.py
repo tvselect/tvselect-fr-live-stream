@@ -215,8 +215,7 @@ for video in data:
         )
         continue
 
-    raw_title = sanitize_filename(video['title'])
-    title_short = raw_title[:-3] if len(raw_title) > 3 else raw_title
+    title = sanitize_filename(video['title'])
     raw_channel = video["channel"].replace("'", "-").replace(" ", "_")
 
     safe_channel_param = shlex.quote(raw_channel)
@@ -257,12 +256,12 @@ for video in data:
             ". $HOME/.local/share/tvselect-fr-live-stream/.venv/bin/activate "
             f"&& timeout {safe_duration} streamlink "
             "--ffmpeg-validation-timeout 12.0 "
-            f"--hls-live-edge 5 -o $HOME/videos_select/{title_short}"
+            f"--hls-live-edge 5 -o $HOME/videos_select/{title}"
             f"_{safe_channel_param}.ts "
             "--tf1-email \"$STREAMLINK_TF1_EMAIL\" "
             "--tf1-password \"$STREAMLINK_TF1_PASSWORD\" "
             f"{safe_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
-            f"record_{title_short}.log 2>&1"
+            f"record_{title}.log 2>&1"
         )
 
     elif (
@@ -270,7 +269,7 @@ for video in data:
         and not can_process_tf1_video(TF1_EMAIL, TF1_PASSWORD, video["channel"])
     ):
         logger.error(
-            f"The video {title_short}_{safe_channel_param}.ts cannot be "
+            f"The video {title}_{safe_channel_param}.ts cannot be "
             "recorded because of TF1 missing credentials."
         )
         continue
@@ -280,9 +279,9 @@ for video in data:
             ". $HOME/.local/share/tvselect-fr-live-stream/.venv/bin/activate "
             f"&& timeout {safe_duration} streamlink "
             "--ffmpeg-validation-timeout 12.0 "
-            f"--hls-live-edge 5 -o $HOME/videos_select/{title_short}"
+            f"--hls-live-edge 5 -o $HOME/videos_select/{title}"
             f"_{safe_channel_param}.ts {safe_url} best >> ~/.local/share/tvselect-fr-live-stream/logs/"
-            f"record_{title_short}.log 2>&1"
+            f"record_{title}.log 2>&1"
         )
 
     with open(log_file, "a", encoding="utf-8") as log:
