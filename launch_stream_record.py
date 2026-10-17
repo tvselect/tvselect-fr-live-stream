@@ -89,9 +89,9 @@ def can_process_tf1_video(TF1_EMAIL, TF1_PASSWORD, channel):
             return True
 
 def subtract_one_minute(time_str: str) -> str:
-    dt = datetime.strptime(time_str, "%H:%M")
+    dt = datetime.strptime(time_str, "%Y%m%d%H%M")
     dt -= timedelta(minutes=1)
-    return dt.strftime("%H:%M")
+    return dt.strftime("%Y%m%d%H%M")
 
 def sanitize_filename(name):
     """
@@ -223,13 +223,13 @@ for video in data:
     safe_duration = shlex.quote(str(video['duration']))
     safe_url = shlex.quote(channel_url)
 
-    cmd = ["at", video["start"]]
+    cmd = ["at", "-t", video["start"]]
 
     if (
         video["channel"] in TF1_CHANNELS
         and can_process_tf1_video(TF1_EMAIL, TF1_PASSWORD, video["channel"])
     ):
-        cmd_purge = ["at", subtract_one_minute(video["start"])]
+        cmd_purge = ["at", "-t", subtract_one_minute(video["start"])]
 
         purge_script = (
             ". $HOME/.local/share/tvselect-fr-live-stream/.venv/bin/activate "
